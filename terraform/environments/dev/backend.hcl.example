@@ -1,0 +1,2 @@
+bucket = "<terraform/bootstrap の state_bucket_name>"
+region = "ap-northeast-1"
