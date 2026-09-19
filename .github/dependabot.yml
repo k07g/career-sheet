@@ -11,6 +11,13 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # eslint-config-next (via eslint-plugin-react) doesn't support ESLint 10
+      # yet, so a major bump here breaks `next lint`. Remove once upstream
+      # catches up.
+      - dependency-name: "eslint"
+        update-types:
+          - "version-update:semver-major"
 
   - package-ecosystem: "github-actions"
     directory: "/"
