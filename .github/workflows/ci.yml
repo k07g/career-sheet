@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      # npm ci fails here on Linux: sharp's optional freebsd/webcontainers wasm32
+      # variants pull in @emnapi/runtime as a non-optional dependency, and npm's
+      # lockfile (generated on macOS) never resolves that platform-inapplicable
+      # branch, so `npm ci`'s stricter graph check rejects it. `npm install`
+      # still resolves from the committed lockfile but tolerates the gap.
+      - name: Install dependencies
+        run: npm install
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
