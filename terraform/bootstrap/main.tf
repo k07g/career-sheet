@@ -47,7 +47,7 @@ resource "aws_s3_bucket_public_access_block" "terraform_state" {
 
 # --- GitHub Actions用 OIDC IAMロール ---
 # CIから長期クレデンシャルを使わずAWSを操作できるようにする。
-# ワークフロー側のjobsで`environment: prod`を指定する前提のため、GitHubが
+# ワークフロー側のjobsで`environment: dev`を指定する前提のため、GitHubが
 # 発行するOIDCトークンのsubクレームは repo:OWNER/REPO:environment:ENV_NAME になる。
 
 data "tls_certificate" "github_actions" {
@@ -125,7 +125,7 @@ data "aws_iam_policy_document" "terraform_ci_permissions" {
 
   statement {
     # Amplifyアプリ/ブランチの作成・変更・削除に必要。このロールはOIDCの
-    # environment条件により、GitHub Actionsの`environment: prod`ジョブから
+    # environment条件により、GitHub Actionsの`environment: dev`ジョブから
     # のみAssumeRoleWithWebIdentityできるため実行経路はCIに限定される。
     sid       = "AmplifyManagement"
     effect    = "Allow"

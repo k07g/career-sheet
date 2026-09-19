@@ -12,7 +12,7 @@ terraform {
   # bucket/regionは -backend-config=backend.hcl (またはCIの-backend-config) で
   # 指定する (backend.hcl.example参照)
   backend "s3" {
-    key          = "career-sheet/prod/terraform.tfstate"
+    key          = "career-sheet/dev/terraform.tfstate"
     use_lockfile = true
   }
 }

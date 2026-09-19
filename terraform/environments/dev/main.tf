@@ -37,10 +37,11 @@ resource "aws_amplify_app" "this" {
   }
 }
 
-# mainブランチのみを本番ブランチとして接続する。auto_branch_creationは
-# 有効化しないため、他のブランチが自動でAmplifyアプリ化されることはない。
-# enable_auto_build=true により、mainへのpush(=ブランチ保護でCI必須にした
-# PRのマージ)のたびにAmplifyが自動でビルド・デプロイする。
+# mainブランチのみを唯一のデプロイ対象ブランチとして接続する。
+# auto_branch_creationは有効化しないため、他のブランチが自動でAmplify
+# アプリ化されることはない。enable_auto_build=true により、mainへの
+# push(=ブランチ保護でCI必須にしたPRのマージ)のたびにAmplifyが
+# 自動でビルド・デプロイする。
 resource "aws_amplify_branch" "main" {
   app_id      = aws_amplify_app.this.id
   branch_name = "main"

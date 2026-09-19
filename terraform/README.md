@@ -7,16 +7,19 @@ career-sheetをAWS Amplify Hostingで稼働させるためのTerraformプロジ�
 
 ```
 terraform/
-  bootstrap/            # state用S3、GitHub Actions用OIDC IAMロールを作る(初回のみ手動実行)
-  environments/prod/    # Amplifyアプリ/ブランチの本体。mainマージ時にCIが自動apply
+  bootstrap/           # state用S3、GitHub Actions用OIDC IAMロールを作る(初回のみ手動実行)
+  environments/dev/    # Amplifyアプリ/ブランチの本体。mainマージ時にCIが自動apply
 ```
 
 | 項目 | 値 |
 | --- | --- |
 | state | S3 backend (`bootstrap`で作成) |
-| apply方法 | **mainブランチへのマージ時にGitHub Actionsが自動apply** ([.github/workflows/terraform-prod-apply.yml](../.github/workflows/terraform-prod-apply.yml)) |
-| 実データ | AWS Amplify Hosting アプリ + `main` ブランチ (本番) |
+| apply方法 | **mainブランチへのマージ時にGitHub Actionsが自動apply** ([.github/workflows/terraform-dev-apply.yml](../.github/workflows/terraform-dev-apply.yml)) |
+| 実データ | AWS Amplify Hosting アプリ + `main` ブランチ (dev環境。g4と同様、現時点で唯一実際に稼働する環境) |
 | アプリのビルド・デプロイ | Terraformではなく **Amplifyの自動ビルド機能** が、`main`へのpushのたびに行う |
+
+本格的なステージング/本番分離が必要になった場合は、g4と同様
+`environments/` 配下に `stg` / `prod` などを追加すること。
 
 ## デプロイのゲート
 
@@ -35,7 +38,7 @@ Amplifyの自動ビルド自体はCIの結果を待たないが、ブランチ�
 
 ## 前提
 
-- Terraform >= 1.10 (`environments/prod`が使うS3ネイティブロック `use_lockfile` の要件)
+- Terraform >= 1.10 (`environments/dev`が使うS3ネイティブロック `use_lockfile` の要件)
 - AWS認証情報(環境変数 / `~/.aws/credentials` など)が設定済みであること
 
 ## 0. 初回セットアップ(bootstrap、手動・一度だけ)
@@ -54,18 +57,18 @@ terraform apply \
   `-var="create_github_oidc_provider=false" -var="existing_github_oidc_provider_arn=<既存のARN>"`
   を追加する
 
-apply後、以下をGitHubリポジトリの **Settings > Environments** で `prod` という
+apply後、以下をGitHubリポジトリの **Settings > Environments** で `dev` という
 名前のEnvironmentを作成し、その配下の **Environment secrets / variables**、
 および通常の **Settings > Secrets and variables > Actions** に登録する
 (ARN等は機密ではないためVariablesでよいが、GitHub PATは必ずSecretsに入れる)。
 
 | 登録先 | 名前 | 値 |
 | --- | --- | --- |
-| Environment `prod` の Variables | `AWS_PROD_TERRAFORM_ROLE_ARN` | `terraform output github_actions_role_arn` |
-| Environment `prod` の Variables | `TF_STATE_BUCKET` | `terraform output state_bucket_name` |
-| Environment `prod` の Variables | `AWS_REGION` | 任意(未設定時は `ap-northeast-1`) |
-| Environment `prod` の Variables | `G4_API_BASE_URL` | g4認証APIの本番URL |
-| Environment `prod` の Secrets | `AMPLIFY_GITHUB_ACCESS_TOKEN` | 手順1で発行するGitHub PAT |
+| Environment `dev` の Variables | `AWS_DEV_TERRAFORM_ROLE_ARN` | `terraform output github_actions_role_arn` |
+| Environment `dev` の Variables | `TF_STATE_BUCKET` | `terraform output state_bucket_name` |
+| Environment `dev` の Variables | `AWS_REGION` | 任意(未設定時は `ap-northeast-1`) |
+| Environment `dev` の Variables | `G4_API_BASE_URL` | g4認証APIのURL |
+| Environment `dev` の Secrets | `AMPLIFY_GITHUB_ACCESS_TOKEN` | 手順1で発行するGitHub PAT |
 
 `terraform/bootstrap` の `terraform.tfstate` はこのbootstrap自体の管理に必要
 なので、誤って削除しないこと(このディレクトリはめったに変更しない想定)。
@@ -85,10 +88,10 @@ TerraformからAmplifyアプリを作成するには、事前にAmplify専用の
 
 参考: [Setting up Amplify access to GitHub repositories](https://docs.aws.amazon.com/amplify/latest/userguide/setting-up-GitHub-access.html)
 
-## 2. prod環境: mainマージで自動apply
+## 2. dev環境: mainマージで自動apply
 
-[.github/workflows/terraform-prod-apply.yml](../.github/workflows/terraform-prod-apply.yml) が、
-`main` ブランチへのpush(マージ)のうち `terraform/environments/prod/**` に
+[.github/workflows/terraform-dev-apply.yml](../.github/workflows/terraform-dev-apply.yml) が、
+`main` ブランチへのpush(マージ)のうち `terraform/environments/dev/**` に
 変更があった場合に、GitHub ActionsのOIDCでAWSにAssumeRoleし
 `terraform init && plan && apply` を自動実行し、Amplifyアプリ/ブランチの
 設定(ビルド設定・環境変数など)を最新化する。
@@ -96,26 +99,26 @@ TerraformからAmplifyアプリを作成するには、事前にAmplify専用の
 - 初回はこのファイル一式をmainにマージした時点で自動的にAmplifyアプリが
   作成される
 - 手動での再実行は Actions タブから `workflow_dispatch` で可能
-- apply前に人手のレビューを挟みたい場合は、**Settings > Environments > prod**
+- apply前に人手のレビューを挟みたい場合は、**Settings > Environments > dev**
   で Required reviewers を設定すると、ワークフロー変更なしに承認ゲートを
   追加できる
 
-ローカルから同じprod stateを操作したい場合は、`backend.hcl.example` を参考に
+ローカルから同じdev stateを操作したい場合は、`backend.hcl.example` を参考に
 `backend.hcl` を作成してから初期化する。
 
 ```sh
-cd terraform/environments/prod
+cd terraform/environments/dev
 cp backend.hcl.example backend.hcl   # 値をbootstrap出力に合わせて編集
 terraform init -backend-config=backend.hcl
 terraform plan \
   -var="github_access_token=<GitHub PAT>" \
-  -var="g4_api_base_url=<g4の本番API URL>"
+  -var="g4_api_base_url=<g4のAPI URL>"
 ```
 
 ## apply後の確認
 
 ```sh
-cd terraform/environments/prod
+cd terraform/environments/dev
 terraform output app_url
 ```
 
@@ -126,10 +129,10 @@ terraform output app_url
 ## 破棄
 
 ```sh
-cd terraform/environments/prod
+cd terraform/environments/dev
 terraform destroy \
   -var="github_access_token=<GitHub PAT>" \
-  -var="g4_api_base_url=<g4の本番API URL>"
+  -var="g4_api_base_url=<g4のAPI URL>"
 ```
 
 state用のS3バケットやOIDC IAMロール自体を破棄する場合は

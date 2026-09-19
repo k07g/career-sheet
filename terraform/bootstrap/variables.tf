@@ -24,7 +24,7 @@ variable "github_repository" {
 variable "github_actions_environment" {
   description = "OIDC信頼関係で許可するGitHub Actionsのenvironment名 (ワークフロー側のjobs.<id>.environmentと一致させる)"
   type        = string
-  default     = "prod"
+  default     = "dev"
 }
 
 variable "create_github_oidc_provider" {

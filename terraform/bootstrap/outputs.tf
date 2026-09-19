@@ -3,7 +3,7 @@ output "state_bucket_name" {
 }
 
 output "github_actions_role_arn" {
-  description = "environments/prod の apply をCIから行う際にAssumeRoleするロールのARN"
+  description = "environments/dev の apply をCIから行う際にAssumeRoleするロールのARN"
   value       = aws_iam_role.terraform_ci.arn
 }
 
