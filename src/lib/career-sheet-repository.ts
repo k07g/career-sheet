@@ -1,8 +1,8 @@
 import { CareerSheet } from "@/types/career-sheet";
 
 /**
- * Storage abstraction for a career sheet. Swap `localStorageCareerSheetRepository`
- * for an HTTP-backed implementation (same interface) once a backend API exists.
+ * Storage abstraction for a career sheet. Swap `createLocalStorageCareerSheetRepository`
+ * for an HTTP-backed implementation (same interface) once a data backend exists.
  */
 export interface CareerSheetRepository {
   load(): Promise<CareerSheet | null>;
@@ -10,31 +10,41 @@ export interface CareerSheetRepository {
   clear(): Promise<void>;
 }
 
-const STORAGE_KEY = "career-sheet:data";
+const STORAGE_KEY_PREFIX = "career-sheet:data";
 
-export const localStorageCareerSheetRepository: CareerSheetRepository = {
-  async load() {
-    if (typeof window === "undefined") return null;
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw) as CareerSheet;
-    } catch {
-      return null;
-    }
-  },
+/**
+ * `namespace` scopes the stored data (the signed-in user's email) so
+ * multiple accounts on the same browser don't share one career sheet.
+ */
+export function createLocalStorageCareerSheetRepository(
+  namespace: string,
+): CareerSheetRepository {
+  const storageKey = `${STORAGE_KEY_PREFIX}:${namespace}`;
 
-  async save(sheet) {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(sheet));
-  },
+  return {
+    async load() {
+      if (typeof window === "undefined") return null;
+      const raw = window.localStorage.getItem(storageKey);
+      if (!raw) return null;
+      try {
+        return JSON.parse(raw) as CareerSheet;
+      } catch {
+        return null;
+      }
+    },
 
-  async clear() {
-    if (typeof window === "undefined") return;
-    window.localStorage.removeItem(STORAGE_KEY);
-  },
-};
+    async save(sheet) {
+      if (typeof window === "undefined") return;
+      window.localStorage.setItem(storageKey, JSON.stringify(sheet));
+    },
 
-export function getCareerSheetRepository(): CareerSheetRepository {
-  return localStorageCareerSheetRepository;
+    async clear() {
+      if (typeof window === "undefined") return;
+      window.localStorage.removeItem(storageKey);
+    },
+  };
+}
+
+export function getCareerSheetRepository(namespace: string): CareerSheetRepository {
+  return createLocalStorageCareerSheetRepository(namespace);
 }

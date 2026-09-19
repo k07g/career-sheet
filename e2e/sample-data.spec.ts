@@ -1,4 +1,9 @@
 import { test, expect } from "@playwright/test";
+import { loginAs } from "./utils/auth";
+
+test.beforeEach(async ({ page }) => {
+  await loginAs(page);
+});
 
 test("loading the sample fills the form and preview", async ({ page }) => {
   await page.goto("/");
