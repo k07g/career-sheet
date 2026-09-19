@@ -18,6 +18,12 @@ updates:
       - dependency-name: "eslint"
         update-types:
           - "version-update:semver-major"
+      # typescript-eslint (via eslint-config-next) only supports
+      # typescript >=4.8.4 <6.1.0 and explicitly rejects TS 7.x at runtime.
+      # Remove once upstream catches up.
+      - dependency-name: "typescript"
+        update-types:
+          - "version-update:semver-major"
 
   - package-ecosystem: "github-actions"
     directory: "/"
