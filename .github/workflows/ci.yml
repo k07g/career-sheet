@@ -18,8 +18,13 @@ jobs:
           node-version: 24
           cache: npm
 
+      # npm ci fails here on Linux: sharp's optional freebsd/webcontainers wasm32
+      # variants pull in @emnapi/runtime as a non-optional dependency, and npm's
+      # lockfile (generated on macOS) never resolves that platform-inapplicable
+      # branch, so `npm ci`'s stricter graph check rejects it. `npm install`
+      # still resolves from the committed lockfile but tolerates the gap.
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Lint
         run: npm run lint
