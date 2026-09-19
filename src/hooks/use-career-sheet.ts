@@ -8,8 +8,8 @@ export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 const AUTOSAVE_DELAY_MS = 600;
 
-export function useCareerSheet() {
-  const repository = getCareerSheetRepository();
+export function useCareerSheet(email: string) {
+  const repository = getCareerSheetRepository(email);
   const [sheet, setSheetState] = useState<CareerSheet>(createEmptyCareerSheet());
   const [isLoaded, setIsLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useCareerSheet } from "@/hooks/use-career-sheet";
 import { createSampleCareerSheet } from "@/lib/sample-career-sheet";
 import { BasicInfoForm } from "./basic-info-form";
@@ -20,10 +21,21 @@ const SAVE_STATUS_LABEL: Record<string, string> = {
   error: "保存に失敗しました",
 };
 
-export function CareerSheetEditor() {
+interface CareerSheetEditorProps {
+  email: string;
+}
+
+export function CareerSheetEditor({ email }: CareerSheetEditorProps) {
+  const router = useRouter();
   const { sheet, setSheet, isLoaded, saveStatus, resetSheet, loadSample } =
-    useCareerSheet();
+    useCareerSheet(email);
   const [mobileTab, setMobileTab] = useState<MobileTab>("form");
+
+  const handleSignOut = async () => {
+    await fetch("/api/auth/signout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
+  };
 
   const handleLoadSample = () => {
     if (
@@ -54,7 +66,7 @@ export function CareerSheetEditor() {
         <div>
           <h1 className="text-xl font-bold text-slate-900">キャリアシート作成</h1>
           <p className="text-sm text-slate-500">
-            入力内容はブラウザに自動保存されます。
+            {email} としてログイン中 ・ 入力内容はブラウザに自動保存されます。
             {saveStatus !== "idle" && (
               <span
                 className={`ml-2 ${
@@ -87,6 +99,13 @@ export function CareerSheetEditor() {
             className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700"
           >
             印刷 / PDF保存
+          </button>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            ログアウト
           </button>
         </div>
       </header>
