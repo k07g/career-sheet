@@ -51,11 +51,14 @@ terraform apply \
 ```
 
 - `state_bucket_name` は必須(S3バケット名はAWS全体で一意である必要がある)
-- **AWSアカウントに既にGitHub Actions用のOIDCプロバイダが存在する場合**
-  (例えば [g4](https://github.com/k07g/g4) のbootstrapを既に適用済みの場合。
-  1アカウントにつきプロバイダは1つまでしか作成できない)は、
-  `-var="create_github_oidc_provider=false" -var="existing_github_oidc_provider_arn=<既存のARN>"`
-  を追加する
+- `create_github_oidc_provider` の既定値は `false`。このAWSアカウントには
+  既に [g4](https://github.com/k07g/g4) のbootstrapでGitHub Actions用の
+  OIDCプロバイダが作成済みで、1アカウントにつき1つまでしか作成できない
+  ため(そのままtrueでapplyすると `EntityAlreadyExists` エラーになる)。
+  既存プロバイダのARNはアカウントIDから自動的に求まるため、通常はARNを
+  自分で調べて渡す必要はない
+- まだOIDCプロバイダが存在しないフレッシュなAWSアカウントで使う場合のみ
+  `-var="create_github_oidc_provider=true"` を追加する
 
 apply後、以下をGitHubリポジトリの **Settings > Environments** で `dev` という
 名前のEnvironmentを作成し、その配下の **Environment secrets / variables**、
