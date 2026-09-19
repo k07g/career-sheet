@@ -16,11 +16,17 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const author = context.payload.pull_request.user;
+            // Bots (e.g. dependabot[bot]) can't be assigned to issues/PRs -
+            // GitHub rejects it with 403. Fall back to the repo owner so
+            // those PRs still get someone to review them.
+            const assignee = author.type === "Bot" ? context.repo.owner : author.login;
+
             await github.rest.issues.addAssignees({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.pull_request.number,
-              assignees: [context.payload.pull_request.user.login],
+              assignees: [assignee],
             });
 
   label-by-branch:
