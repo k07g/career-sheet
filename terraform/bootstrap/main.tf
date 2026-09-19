@@ -64,7 +64,17 @@ resource "aws_iam_openid_connect_provider" "github_actions" {
 }
 
 locals {
-  github_oidc_provider_arn = var.create_github_oidc_provider ? aws_iam_openid_connect_provider.github_actions[0].arn : var.existing_github_oidc_provider_arn
+  # token.actions.githubusercontent.com 用のIAM OIDCプロバイダのARNは
+  # arn:aws:iam::<account_id>:oidc-provider/<url> という固定形式のため、
+  # 既存プロバイダのARNは(URLさえ分かっていれば)account_idから機械的に
+  # 求まる。existing_github_oidc_provider_arn を明示指定しない限りは
+  # この値を使うので、他プロジェクト(g4等)で作成済みのプロバイダを
+  # 再利用する場合も create_github_oidc_provider=false を指定するだけでよい。
+  computed_existing_oidc_provider_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"
+
+  github_oidc_provider_arn = var.create_github_oidc_provider ? aws_iam_openid_connect_provider.github_actions[0].arn : (
+    var.existing_github_oidc_provider_arn != "" ? var.existing_github_oidc_provider_arn : local.computed_existing_oidc_provider_arn
+  )
 }
 
 data "aws_iam_policy_document" "github_actions_trust" {

@@ -31,15 +31,23 @@ variable "create_github_oidc_provider" {
   description = <<-EOT
     GitHub Actions用のOIDC IDプロバイダを新規作成するか。
     AWSアカウントには token.actions.githubusercontent.com のプロバイダを1つしか
-    作成できないため、他プロジェクト (例: g4) で既に作成済みの場合はfalseにし
-    existing_github_oidc_provider_arn を指定すること。
+    作成できない。このAWSアカウントには既に(g4のbootstrapにより)作成済み
+    のため既定値はfalse。フレッシュなAWSアカウントで初めて作る場合のみ
+    trueにすること。既存プロバイダのARNは existing_github_oidc_provider_arn
+    を明示指定しない限り、現在のAWSアカウントIDから自動的に求まる
+    (ARNの形式が固定のため)。
   EOT
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "existing_github_oidc_provider_arn" {
-  description = "create_github_oidc_provider = false の場合に指定する、既存のGitHub Actions用OIDCプロバイダのARN"
+  description = <<-EOT
+    create_github_oidc_provider = false の場合に使う、既存のGitHub Actions用
+    OIDCプロバイダのARN。通常は指定不要 (現在のAWSアカウントIDから自動的に
+    求まる値をそのまま使う)。別アカウントで作成したプロバイダを使うなど、
+    自動計算値と異なるARNを使いたい場合のみ指定する。
+  EOT
   type        = string
   default     = ""
 }
