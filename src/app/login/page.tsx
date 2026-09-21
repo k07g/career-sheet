@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getSessionEmail } from "@/lib/session";
 import { LoginForm } from "@/components/auth/login-form";
@@ -10,7 +11,11 @@ export default async function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12">
-      <LoginForm />
+      {/* LoginForm reads ?email=&code= via useSearchParams(), which requires
+          a Suspense boundary. */}
+      <Suspense>
+        <LoginForm />
+      </Suspense>
     </div>
   );
 }

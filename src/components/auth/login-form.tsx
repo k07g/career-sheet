@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TextField } from "@/components/ui/field";
 
 type Mode = "signin" | "signup" | "confirm" | "forgot" | "reset";
@@ -30,10 +30,18 @@ function SubmitButton({ label, isSubmitting }: { label: string; isSubmitting: bo
 
 export function LoginForm() {
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>("signin");
-  const [email, setEmail] = useState("");
+  const searchParams = useSearchParams();
+  // A password-reset email links here with ?email=...&code=..., so the
+  // reset form can skip straight to just asking for a new password instead
+  // of making the user copy both fields in by hand.
+  const linkEmail = searchParams.get("email");
+  const linkCode = searchParams.get("code");
+  const [isResetFromLink] = useState(Boolean(linkEmail && linkCode));
+
+  const [mode, setMode] = useState<Mode>(isResetFromLink ? "reset" : "signin");
+  const [email, setEmail] = useState(linkEmail ?? "");
   const [password, setPassword] = useState("");
-  const [code, setCode] = useState("");
+  const [code, setCode] = useState(linkCode ?? "");
   const [newPassword, setNewPassword] = useState("");
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
@@ -159,7 +167,10 @@ export function LoginForm() {
         {mode === "signup" && "アカウントを作成してください"}
         {mode === "confirm" && "メールに届いた確認コードを入力してください"}
         {mode === "forgot" && "登録済みのメールアドレスを入力してください"}
-        {mode === "reset" && "届いたコードと新しいパスワードを入力してください"}
+        {mode === "reset" &&
+          (isResetFromLink
+            ? "新しいパスワードを入力してください"
+            : "届いたコードと新しいパスワードを入力してください")}
       </p>
 
       {(mode === "signin" || mode === "signup") && (
@@ -295,22 +306,30 @@ export function LoginForm() {
 
       {mode === "reset" && (
         <form onSubmit={handleResetPassword} className="space-y-4">
-          <TextField
-            label="メールアドレス"
-            htmlFor="reset-email"
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <TextField
-            label="リセットコード"
-            htmlFor="reset-code"
-            required
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-          />
+          {isResetFromLink ? (
+            <p className="text-sm text-slate-600">
+              <span className="font-medium">{email}</span> のパスワードを再設定します。
+            </p>
+          ) : (
+            <>
+              <TextField
+                label="メールアドレス"
+                htmlFor="reset-email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <TextField
+                label="リセットコード"
+                htmlFor="reset-code"
+                required
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+              />
+            </>
+          )}
           <TextField
             label="新しいパスワード"
             htmlFor="reset-new-password"
