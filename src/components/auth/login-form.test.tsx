@@ -87,4 +87,85 @@ describe("LoginForm", () => {
       expect.objectContaining({ method: "POST" }),
     );
   });
+
+  it("moves from forgot-password to reset-password after requesting a code", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal("fetch", mockFetchOnce(204, null));
+    render(<LoginForm />);
+
+    await user.click(screen.getByRole("button", { name: "パスワードを忘れた場合は" }));
+    await user.type(screen.getByLabelText("メールアドレス", { exact: false }), "taro@example.com");
+    await user.click(screen.getByRole("button", { name: "リセットコードを送信" }));
+
+    expect(await screen.findByLabelText("リセットコード", { exact: false })).toBeInTheDocument();
+    expect(screen.getByLabelText("新しいパスワード", { exact: false })).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/auth/forgot-password",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("resets the password and returns to sign-in on success", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal("fetch", mockFetchOnce(204, null));
+    render(<LoginForm />);
+
+    await user.click(screen.getByRole("button", { name: "パスワードを忘れた場合は" }));
+    await user.type(screen.getByLabelText("メールアドレス", { exact: false }), "taro@example.com");
+    await user.click(screen.getByRole("button", { name: "リセットコードを送信" }));
+
+    await user.type(await screen.findByLabelText("リセットコード", { exact: false }), "123456");
+    await user.type(screen.getByLabelText("新しいパスワード", { exact: false }), "NewPassw0rd!123");
+    await user.click(screen.getByRole("button", { name: "パスワードを再設定" }));
+
+    expect(
+      await screen.findByText("パスワードを再設定しました。新しいパスワードでサインインしてください。"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("メールアドレス", { exact: false })).toBeInTheDocument();
+    expect(screen.queryByLabelText("リセットコード", { exact: false })).not.toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/auth/reset-password",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("shows the server error message when resetting the password fails", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => {
+        if (url === "/api/auth/forgot-password") {
+          return Promise.resolve({ ok: true, status: 204, json: async () => null });
+        }
+        return Promise.resolve({
+          ok: false,
+          status: 400,
+          json: async () => ({ error: "invalid or expired confirmation code" }),
+        });
+      }),
+    );
+    render(<LoginForm />);
+
+    await user.click(screen.getByRole("button", { name: "パスワードを忘れた場合は" }));
+    await user.type(screen.getByLabelText("メールアドレス", { exact: false }), "taro@example.com");
+    await user.click(screen.getByRole("button", { name: "リセットコードを送信" }));
+
+    await user.type(await screen.findByLabelText("リセットコード", { exact: false }), "000000");
+    await user.type(screen.getByLabelText("新しいパスワード", { exact: false }), "NewPassw0rd!123");
+    await user.click(screen.getByRole("button", { name: "パスワードを再設定" }));
+
+    expect(await screen.findByText("invalid or expired confirmation code")).toBeInTheDocument();
+  });
+
+  it("returns to sign-in from the forgot-password screen", async () => {
+    const user = userEvent.setup();
+    render(<LoginForm />);
+
+    await user.click(screen.getByRole("button", { name: "パスワードを忘れた場合は" }));
+    expect(screen.getByRole("button", { name: "リセットコードを送信" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "サインインに戻る" }));
+
+    expect(getSubmitButton("サインイン")).toBeInTheDocument();
+  });
 });

@@ -79,6 +79,26 @@ export async function g4SignIn(email: string, password: string): Promise<SignInR
   };
 }
 
+export async function g4ForgotPassword(email: string): Promise<void> {
+  const res = await g4Fetch("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    throw new G4ApiError(res.status, await readErrorMessage(res, "リセットコードの送信に失敗しました"));
+  }
+}
+
+export async function g4ResetPassword(email: string, code: string, newPassword: string): Promise<void> {
+  const res = await g4Fetch("/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ email, code, new_password: newPassword }),
+  });
+  if (!res.ok) {
+    throw new G4ApiError(res.status, await readErrorMessage(res, "パスワードのリセットに失敗しました"));
+  }
+}
+
 export async function g4SignOut(accessToken: string): Promise<void> {
   const res = await g4Fetch("/auth/signout", {
     method: "POST",
