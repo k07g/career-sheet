@@ -8,6 +8,12 @@ resource "aws_amplify_app" "this" {
 
   # npm ci はsharpのfreebsd/webcontainers向けwasm32オプション依存の解決漏れで
   # Linux上で失敗するため npm install を使う (.github/workflows/ci.yml と同じ理由)。
+  #
+  # Amplify Hostingはenvironment_variablesをビルド時にしか渡さず、Next.jsの
+  # SSRランタイム(Route Handler/Server Component)からは意図的に隔離されている
+  # (ビルド時のみ使う秘密情報を誤って実行時に漏らさないための仕様)。そのため
+  # G4_API_BASE_URLを明示的に.env.productionへ書き出してからbuildする必要がある。
+  # 参考: https://docs.aws.amazon.com/amplify/latest/userguide/ssr-environment-variables.html
   build_spec = <<-EOT
     version: 1
     frontend:
@@ -17,6 +23,7 @@ resource "aws_amplify_app" "this" {
             - npm install
         build:
           commands:
+            - env | grep -e G4_API_BASE_URL >> .env.production
             - npm run build
       artifacts:
         baseDirectory: .next
