@@ -47,10 +47,18 @@ Amplifyの自動ビルド自体はCIの結果を待たないが、ブランチ�
 cd terraform/bootstrap
 terraform init
 terraform apply \
-  -var="state_bucket_name=<グローバルに一意なバケット名>"
+  -var="state_bucket_name=<グローバルに一意なバケット名>" \
+  -var="github_owner_id=$(gh api users/k07g --jq .id)" \
+  -var="github_repo_id=$(gh api repos/k07g/career-sheet --jq .id)"
 ```
 
 - `state_bucket_name` は必須(S3バケット名はAWS全体で一意である必要がある)
+- `github_owner_id` / `github_repo_id` も必須。2026-07-15以降に作成された
+  リポジトリ(career-sheetは2026-09-19作成)は、OIDCトークンのsubクレームに
+  不変形式 `repo:OWNER@OWNER_ID/REPO@REPO_ID:environment:ENV_NAME` を使う
+  ([参考](https://docs.github.com/en/actions/reference/security/oidc))ため、
+  従来の `repo:OWNER/REPO:...` 形式では信頼関係の条件が一致せず
+  `Not authorized to perform sts:AssumeRoleWithWebIdentity` になる
 - `create_github_oidc_provider` の既定値は `false`。このAWSアカウントには
   既に [g4](https://github.com/k07g/g4) のbootstrapでGitHub Actions用の
   OIDCプロバイダが作成済みで、1アカウントにつき1つまでしか作成できない
@@ -59,6 +67,16 @@ terraform apply \
   自分で調べて渡す必要はない
 - まだOIDCプロバイダが存在しないフレッシュなAWSアカウントで使う場合のみ
   `-var="create_github_oidc_provider=true"` を追加する
+- 既存のOIDCプロバイダのthumbprintが古い場合(GitHubの中間CA証明書は
+  複数あり、作成時期によっては`data "tls_certificate"`が誤った値を拾う
+  ことがある)、`Not authorized` エラーになることがある。その場合は
+  以下で正しいthumbprintに更新する
+  ([参考](https://github.blog/changelog/2023-06-27-github-actions-update-on-oidc-integration-with-aws/)):
+  ```sh
+  aws iam update-open-id-connect-provider-thumbprint \
+    --open-id-connect-provider-arn <既存プロバイダのARN> \
+    --thumbprint-list 6938fd4d98bab03faadb97b34396831e3780aea1 1c58a3a8518e8759bf075b76b750d4f2df264fcd
+  ```
 
 apply後、以下をGitHubリポジトリの **Settings > Environments** で `dev` という
 名前のEnvironmentを作成し、その配下の **Environment secrets / variables**、

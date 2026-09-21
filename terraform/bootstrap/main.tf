@@ -47,8 +47,20 @@ resource "aws_s3_bucket_public_access_block" "terraform_state" {
 
 # --- GitHub Actions用 OIDC IAMロール ---
 # CIから長期クレデンシャルを使わずAWSを操作できるようにする。
-# ワークフロー側のjobsで`environment: dev`を指定する前提のため、GitHubが
-# 発行するOIDCトークンのsubクレームは repo:OWNER/REPO:environment:ENV_NAME になる。
+#
+# 2026-07-15以降に作成されたリポジトリ(career-sheetは2026-09-19作成)は、
+# OIDCトークンのsubクレームに不変形式 repo:OWNER@OWNER_ID/REPO@REPO_ID:... を
+# 使う(名前空間の再利用によるなりすましを防ぐため)。従来の
+# repo:OWNER/REPO:... 形式のCondition値では一致しないため、
+# github_owner_id / github_repo_id を使って不変形式を組み立てる。
+# 参考: https://docs.github.com/en/actions/reference/security/oidc
+locals {
+  github_repository_parts = split("/", var.github_repository)
+  github_owner_login      = local.github_repository_parts[0]
+  github_repo_name        = local.github_repository_parts[1]
+
+  github_actions_subject = "repo:${local.github_owner_login}@${var.github_owner_id}/${local.github_repo_name}@${var.github_repo_id}:environment:${var.github_actions_environment}"
+}
 
 data "tls_certificate" "github_actions" {
   count = var.create_github_oidc_provider ? 1 : 0
@@ -96,7 +108,7 @@ data "aws_iam_policy_document" "github_actions_trust" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repository}:environment:${var.github_actions_environment}"]
+      values   = [local.github_actions_subject]
     }
   }
 }

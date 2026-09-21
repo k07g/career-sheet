@@ -27,6 +27,26 @@ variable "github_actions_environment" {
   default     = "dev"
 }
 
+variable "github_owner_id" {
+  description = <<-EOT
+    GitHubオーナー(ユーザー/組織)の数値ID。2026-07-15以降に作成された
+    リポジトリは、OIDCトークンのsubクレームに不変形式
+    (repo:OWNER@OWNER_ID/REPO@REPO_ID:...) を使うため必要。
+    `gh api users/<owner> --jq .id` で取得できる
+    (career-sheet/k07gの場合は 155704074)。
+  EOT
+  type        = string
+}
+
+variable "github_repo_id" {
+  description = <<-EOT
+    GitHubリポジトリの数値ID。上記と同じ理由で必要。
+    `gh api repos/<owner>/<repo> --jq .id` で取得できる
+    (k07g/career-sheetの場合は 1376685107)。
+  EOT
+  type        = string
+}
+
 variable "create_github_oidc_provider" {
   description = <<-EOT
     GitHub Actions用のOIDC IDプロバイダを新規作成するか。
