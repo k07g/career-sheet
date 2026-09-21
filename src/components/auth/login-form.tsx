@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TextField } from "@/components/ui/field";
 
-type Mode = "signin" | "signup" | "confirm";
+type Mode = "signin" | "signup" | "confirm" | "forgot" | "reset";
 
 async function postJson(path: string, body: unknown) {
   const res = await fetch(path, {
@@ -34,6 +34,7 @@ export function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -103,6 +104,53 @@ export function LoginForm() {
     }
   };
 
+  const handleForgotPassword = async (e: FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsSubmitting(true);
+    try {
+      const { ok, data } = await postJson("/api/auth/forgot-password", { email });
+      if (!ok) {
+        setError(data.error ?? "リセットコードの送信に失敗しました");
+        return;
+      }
+      setMode("reset");
+      setInfo(
+        "入力されたメールアドレス宛にパスワード再設定用のコードを送信しました(該当するアカウントが存在する場合)。届いたコードと新しいパスワードを入力してください。",
+      );
+    } catch {
+      setError("認証サーバーに接続できませんでした");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResetPassword = async (e: FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsSubmitting(true);
+    try {
+      const { ok, data } = await postJson("/api/auth/reset-password", {
+        email,
+        code,
+        newPassword,
+      });
+      if (!ok) {
+        setError(data.error ?? "パスワードの再設定に失敗しました");
+        return;
+      }
+      setMode("signin");
+      setPassword("");
+      setCode("");
+      setNewPassword("");
+      setInfo("パスワードを再設定しました。新しいパスワードでサインインしてください。");
+    } catch {
+      setError("認証サーバーに接続できませんでした");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
       <h1 className="mb-1 text-lg font-bold text-slate-900">キャリアシート作成</h1>
@@ -110,9 +158,11 @@ export function LoginForm() {
         {mode === "signin" && "サインインして入力を始めましょう"}
         {mode === "signup" && "アカウントを作成してください"}
         {mode === "confirm" && "メールに届いた確認コードを入力してください"}
+        {mode === "forgot" && "登録済みのメールアドレスを入力してください"}
+        {mode === "reset" && "届いたコードと新しいパスワードを入力してください"}
       </p>
 
-      {mode !== "confirm" && (
+      {(mode === "signin" || mode === "signup") && (
         <div className="mb-4 flex rounded-md border border-slate-200 bg-slate-50 p-1 text-sm">
           <button
             type="button"
@@ -153,15 +203,24 @@ export function LoginForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          <TextField
-            label="パスワード"
-            htmlFor="signin-password"
-            type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <div>
+            <TextField
+              label="パスワード"
+              htmlFor="signin-password"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button
+              type="button"
+              onClick={() => switchMode("forgot")}
+              className="mt-1.5 text-sm text-slate-500 underline hover:text-slate-700"
+            >
+              パスワードを忘れた場合は
+            </button>
+          </div>
           <SubmitButton label="サインイン" isSubmitting={isSubmitting} />
         </form>
       )}
@@ -209,6 +268,66 @@ export function LoginForm() {
             onChange={(e) => setCode(e.target.value)}
           />
           <SubmitButton label="確認する" isSubmitting={isSubmitting} />
+        </form>
+      )}
+
+      {mode === "forgot" && (
+        <form onSubmit={handleForgotPassword} className="space-y-4">
+          <TextField
+            label="メールアドレス"
+            htmlFor="forgot-email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <SubmitButton label="リセットコードを送信" isSubmitting={isSubmitting} />
+          <button
+            type="button"
+            onClick={() => switchMode("signin")}
+            className="w-full text-center text-sm text-slate-500 underline hover:text-slate-700"
+          >
+            サインインに戻る
+          </button>
+        </form>
+      )}
+
+      {mode === "reset" && (
+        <form onSubmit={handleResetPassword} className="space-y-4">
+          <TextField
+            label="メールアドレス"
+            htmlFor="reset-email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <TextField
+            label="リセットコード"
+            htmlFor="reset-code"
+            required
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+          />
+          <TextField
+            label="新しいパスワード"
+            htmlFor="reset-new-password"
+            type="password"
+            autoComplete="new-password"
+            required
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+          />
+          <SubmitButton label="パスワードを再設定" isSubmitting={isSubmitting} />
+          <button
+            type="button"
+            onClick={() => switchMode("signin")}
+            className="w-full text-center text-sm text-slate-500 underline hover:text-slate-700"
+          >
+            サインインに戻る
+          </button>
         </form>
       )}
     </div>

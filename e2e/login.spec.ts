@@ -57,6 +57,42 @@ test("signing in redirects to the form", async ({ page }) => {
   await expect(page.getByText("taro@example.com としてログイン中")).toBeVisible();
 });
 
+test("resets a forgotten password and signs in with the new one", async ({ page }) => {
+  await page.route("**/api/auth/forgot-password", async (route) => {
+    await route.fulfill({ status: 204 });
+  });
+  await page.route("**/api/auth/reset-password", async (route) => {
+    await route.fulfill({ status: 204 });
+  });
+  await page.route("**/api/auth/signin", async (route) => {
+    await loginAs(page, "taro@example.com");
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ email: "taro@example.com" }),
+    });
+  });
+
+  await page.goto("/login");
+  await page.getByRole("button", { name: "パスワードを忘れた場合は" }).click();
+  await page.getByLabel("メールアドレス", { exact: false }).fill("taro@example.com");
+  await page.getByRole("button", { name: "リセットコードを送信" }).click();
+
+  await expect(page.getByLabel("リセットコード", { exact: false })).toBeVisible();
+  await page.getByLabel("リセットコード", { exact: false }).fill("123456");
+  await page.getByLabel("新しいパスワード", { exact: false }).fill("NewPassw0rd!123");
+  await page.getByRole("button", { name: "パスワードを再設定" }).click();
+
+  await expect(
+    page.getByText("パスワードを再設定しました。新しいパスワードでサインインしてください。"),
+  ).toBeVisible();
+
+  await page.getByLabel("パスワード", { exact: false }).fill("NewPassw0rd!123");
+  await page.getByRole("button", { name: "サインイン", exact: true }).last().click();
+
+  await expect(page).toHaveURL(/\/$/);
+});
+
 test("signing out clears the session and returns to /login", async ({ page }) => {
   await loginAs(page);
   await page.goto("/");
