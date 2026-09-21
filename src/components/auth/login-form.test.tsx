@@ -5,9 +5,11 @@ import { LoginForm } from "./login-form";
 
 const pushMock = vi.fn();
 const refreshMock = vi.fn();
+let mockSearchParams = new URLSearchParams();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock, refresh: refreshMock }),
+  useSearchParams: () => mockSearchParams,
 }));
 
 function mockFetchOnce(status: number, body: unknown) {
@@ -30,6 +32,7 @@ describe("LoginForm", () => {
   beforeEach(() => {
     pushMock.mockClear();
     refreshMock.mockClear();
+    mockSearchParams = new URLSearchParams();
   });
 
   afterEach(() => {
@@ -167,5 +170,36 @@ describe("LoginForm", () => {
     await user.click(screen.getByRole("button", { name: "サインインに戻る" }));
 
     expect(getSubmitButton("サインイン")).toBeInTheDocument();
+  });
+
+  it("jumps straight to a password-only reset form when opened from an email link", async () => {
+    mockSearchParams = new URLSearchParams({ email: "taro@example.com", code: "482913" });
+    const user = userEvent.setup();
+    vi.stubGlobal("fetch", mockFetchOnce(204, null));
+    render(<LoginForm />);
+
+    // Email/code came from the link, so they shouldn't be editable inputs -
+    // only the new password field should require user input.
+    expect(screen.queryByLabelText("メールアドレス", { exact: false })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("リセットコード", { exact: false })).not.toBeInTheDocument();
+    expect(screen.getByText("taro@example.com")).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("新しいパスワード", { exact: false }), "NewPassw0rd!123");
+    await user.click(screen.getByRole("button", { name: "パスワードを再設定" }));
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/auth/reset-password",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          email: "taro@example.com",
+          code: "482913",
+          newPassword: "NewPassw0rd!123",
+        }),
+      }),
+    );
+    expect(
+      await screen.findByText("パスワードを再設定しました。新しいパスワードでサインインしてください。"),
+    ).toBeInTheDocument();
   });
 });

@@ -93,6 +93,42 @@ test("resets a forgotten password and signs in with the new one", async ({ page 
   await expect(page).toHaveURL(/\/$/);
 });
 
+test("resets the password from an emailed link with just a new password", async ({
+  page,
+}) => {
+  await page.route("**/api/auth/reset-password", async (route) => {
+    await route.fulfill({ status: 204 });
+  });
+  await page.route("**/api/auth/signin", async (route) => {
+    await loginAs(page, "taro@example.com");
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ email: "taro@example.com" }),
+    });
+  });
+
+  await page.goto("/login?email=taro%40example.com&code=482913");
+
+  // Arriving via the link should skip straight to a password-only form -
+  // no email/code inputs to fill in by hand.
+  await expect(page.getByLabel("メールアドレス", { exact: false })).toHaveCount(0);
+  await expect(page.getByLabel("リセットコード", { exact: false })).toHaveCount(0);
+  await expect(page.getByText("taro@example.com")).toBeVisible();
+
+  await page.getByLabel("新しいパスワード", { exact: false }).fill("NewPassw0rd!123");
+  await page.getByRole("button", { name: "パスワードを再設定" }).click();
+
+  await expect(
+    page.getByText("パスワードを再設定しました。新しいパスワードでサインインしてください。"),
+  ).toBeVisible();
+
+  await page.getByLabel("パスワード", { exact: false }).fill("NewPassw0rd!123");
+  await page.getByRole("button", { name: "サインイン", exact: true }).last().click();
+
+  await expect(page).toHaveURL(/\/$/);
+});
+
 test("signing out clears the session and returns to /login", async ({ page }) => {
   await loginAs(page);
   await page.goto("/");
